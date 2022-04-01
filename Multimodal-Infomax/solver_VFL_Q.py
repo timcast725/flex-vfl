@@ -18,7 +18,7 @@ from model_top import MMIM_top
 from modules.encoders import LanguageEmbeddingLayer, CPC, MMILB, RNNEncoder, SubNet
 
 def make_optimizers(model, text_enc, acoustic_enc, visual_enc, hp, epoch):
-    # Create optimizers
+    # Create optimizers and schedulers
     optimizer={}
     optimizer_visual={}
     optimizer_acoustic={}
@@ -33,6 +33,7 @@ def make_optimizers(model, text_enc, acoustic_enc, visual_enc, hp, epoch):
     #if epoch > 25:
     #    decay_factor = 0.5
 
+    # make list of parameters
     for name, p in text_enc.named_parameters():
         # print(name)
         if p.requires_grad:
@@ -63,6 +64,7 @@ def make_optimizers(model, text_enc, acoustic_enc, visual_enc, hp, epoch):
             if p.dim() > 1: # only tensor with no less than 2 dimensions are possible to calculate fan_in/fan_out
                 nn.init.xavier_normal_(p)
 
+    # Create optimizers
     optimizer_mmilb = getattr(torch.optim, hp.optim)(
         mmilb_param, lr=hp.lr_mmilb*decay_factor, weight_decay=hp.weight_decay_club)
     
@@ -98,6 +100,7 @@ def make_optimizers(model, text_enc, acoustic_enc, visual_enc, hp, epoch):
         optimizer_acoustic_group
     )
 
+    # Create schedulers for learning rate changes
     scheduler_mmilb = ReduceLROnPlateau(optimizer_mmilb, mode='min', patience=hp.when, factor=0.5, verbose=True)
     scheduler_main = ReduceLROnPlateau(optimizer_main, mode='min', patience=hp.when, factor=0.5, verbose=True)
     scheduler_text = ReduceLROnPlateau(optimizer_text, mode='min', patience=hp.when, factor=0.5, verbose=True)
@@ -173,6 +176,7 @@ class Solver(object):
             self.scheduler_mmilb, self.scheduler_main, self.scheduler_text, 
             self.scheduler_acoustic, self.scheduler_visual) = make_optimizers(self.model, self.text_enc, self.acoustic_enc, self.visual_enc, self.hp, 0)
 
+        # Load checkpoint if it exists
         PATH = f"checkpoint_text{self.suffix}.pt"
         if os.path.exists(PATH):
             print("Loading from checkpoint")
@@ -211,6 +215,8 @@ class Solver(object):
     ####################################################################
 
     def train_and_eval(self):
+        # Main training loop
+
         model = self.model
         text_enc = self.text_enc
         acoustic_enc = self.acoustic_enc
@@ -234,16 +240,19 @@ class Solver(object):
         mem_size = 1
 
         if self.alg == "vafl":
+            # Initialize embedding lists
             text_embedding = np.empty((len(self.train_loader)), dtype=object)
             audio_embedding = np.empty((len(self.train_loader)), dtype=object)
             visual_embedding = np.empty((len(self.train_loader)), dtype=object)
 
             PATH = f"checkpoint_main{self.suffix}.pt"
             if os.path.exists(PATH):
+                # Load embeddings from checkpoint
                 text_embedding = pickle.load(open(f'text_embedding{self.suffix}.pkl', 'rb'))
                 audio_embedding = pickle.load(open(f'audio_embedding{self.suffix}.pkl', 'rb'))
                 visual_embedding = pickle.load(open(f'visual_embedding{self.suffix}.pkl', 'rb'))
             else:
+                # Initialize embeddings
                 for i_batch, batch_data in enumerate(self.train_loader):
                     text, visual, vlens, audio, alens, y, l, bert_sent, bert_sent_type, bert_sent_mask, ids = batch_data
                     with torch.cuda.device(0):
@@ -260,6 +269,8 @@ class Solver(object):
                         visual_embedding[i_batch] = visual_enc(visual, vlens)
 
             def train_vafl(model, text_enc, acoustic_enc, visual_enc, optimizer, optimizer_visual, optimizer_acoustic, optimizer_text, criterion, epoch, stage=1):
+                # Train using asynchronous VFL
+
                 epoch_loss = 0
 
                 model.train()
@@ -287,6 +298,7 @@ class Solver(object):
                 audio_wait = 0
                 visual_wait = 0
 
+                # Loop over all mini-batches
                 for i_batch, batch_data in enumerate(self.train_loader):
                     text, visual, vlens, audio, alens, y, l, bert_sent, bert_sent_type, bert_sent_mask, ids = batch_data
         
@@ -324,6 +336,8 @@ class Solver(object):
                     ba_tmp = 0
 
                     def optimize_(text_out, audio_out, visual_out, y, mem, optimizer, local_optimizer, model, local_model, loss_tmp, nce_tmp, ba_tmp, stage):
+                        # optimizer function for a mini-batch
+
                         lld, nce, preds, pn_dic, H = model(text_out, visual_out, audio_out, y, mem)
 
 
@@ -429,6 +443,7 @@ class Solver(object):
                     nce_tmp /= num_updates
                     ba_tmp /= num_updates
                     
+                    # Calculate loss values
                     proc_loss += loss_tmp * batch_size
                     proc_size += batch_size
                     epoch_loss += loss_tmp * batch_size
@@ -452,6 +467,8 @@ class Solver(object):
 
 
         def train(model, text_enc, acoustic_enc, visual_enc, optimizer, optimizer_visual, optimizer_acoustic, optimizer_text, criterion, epoch, stage=1):
+            # Train using synchronous or flexible VFL
+
             epoch_loss = 0
 
             model.train()
@@ -509,6 +526,8 @@ class Solver(object):
                     audio_embedding = acoustic_enc(audio, alens)
                     visual_embedding = visual_enc(visual, vlens)
 
+                # Choose number of local iterations for each party
+                # depending on chosen algorithm
                 if self.alg == 'sync': 
                     local_epochs_main = 20
                     local_epochs_text = 20
@@ -537,6 +556,8 @@ class Solver(object):
                 ba_tmp = 0
 
                 def optimize_(text_out, audio_out, visual_out, y, mem, optimizer, model, local_model, loss_tmp, nce_tmp, ba_tmp, stage):
+                    # optimizer function for a mini-batch
+
                     lld, nce, preds, pn_dic, H = model(text_out, visual_out, audio_out, y, mem)
 
 
@@ -621,6 +642,7 @@ class Solver(object):
                     # Server local iterations
                     loss_tmp, nce_tmp, ba_tmp = optimize_(text_embedding, audio_embedding, visual_embedding, y, mem, optimizer, model, model, loss_tmp, nce_tmp, ba_tmp, stage)
 
+                # Calculate loss values
                 loss_tmp /= (local_epochs_main+local_epochs_text+local_epochs_audio+local_epochs_visual)
                 nce_tmp /= (local_epochs_main+local_epochs_text+local_epochs_audio+local_epochs_visual)
                 ba_tmp /= (local_epochs_main+local_epochs_text+local_epochs_audio+local_epochs_visual)
@@ -647,6 +669,8 @@ class Solver(object):
             return epoch_loss / self.hp.n_train
 
         def evaluate(model, text_enc, acoustic_enc, visual_enc, criterion, test=False):
+            # Get training and test accuracy
+
             model.eval()
             text_enc.eval()
             acoustic_enc.eval()

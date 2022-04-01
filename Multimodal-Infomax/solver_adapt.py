@@ -18,7 +18,7 @@ from model_top import MMIM_top
 from modules.encoders import LanguageEmbeddingLayer, CPC, MMILB, RNNEncoder, SubNet
 
 def make_optimizers(model, text_enc, acoustic_enc, visual_enc, hp, epoch):
-    # Create optimizers
+    # Create optimizers and schedulers
     optimizer={}
     optimizer_visual={}
     optimizer_acoustic={}
@@ -33,6 +33,7 @@ def make_optimizers(model, text_enc, acoustic_enc, visual_enc, hp, epoch):
     #if epoch > 25:
     #    decay_factor = 0.5
 
+    # make list of parameters
     for name, p in text_enc.named_parameters():
         # print(name)
         if p.requires_grad:
@@ -63,6 +64,7 @@ def make_optimizers(model, text_enc, acoustic_enc, visual_enc, hp, epoch):
             if p.dim() > 1: # only tensor with no less than 2 dimensions are possible to calculate fan_in/fan_out
                 nn.init.xavier_normal_(p)
 
+    # Create optimizers
     optimizer_mmilb = getattr(torch.optim, hp.optim)(
         mmilb_param, lr=hp.lr_mmilb*decay_factor, weight_decay=hp.weight_decay_club)
     
@@ -98,6 +100,7 @@ def make_optimizers(model, text_enc, acoustic_enc, visual_enc, hp, epoch):
         optimizer_acoustic_group
     )
 
+    # Create schedulers for learning rate changes
     scheduler_mmilb = ReduceLROnPlateau(optimizer_mmilb, mode='min', patience=hp.when, factor=0.5, verbose=True)
     scheduler_main = ReduceLROnPlateau(optimizer_main, mode='min', patience=hp.when, factor=0.5, verbose=True)
     scheduler_text = ReduceLROnPlateau(optimizer_text, mode='min', patience=hp.when, factor=0.5, verbose=True)
@@ -173,6 +176,7 @@ class Solver(object):
             self.scheduler_mmilb, self.scheduler_main, self.scheduler_text, 
             self.scheduler_acoustic, self.scheduler_visual) = make_optimizers(self.model, self.text_enc, self.acoustic_enc, self.visual_enc, self.hp, 0)
 
+        # Load checkpoint if it exists
         PATH = f"checkpoint_text{self.suffix}.pt"
         if os.path.exists(PATH):
             print("Loading from checkpoint")
@@ -211,6 +215,8 @@ class Solver(object):
     ####################################################################
 
     def train_and_eval(self):
+        # Main training loop
+
         model = self.model
         text_enc = self.text_enc
         acoustic_enc = self.acoustic_enc
@@ -296,6 +302,8 @@ class Solver(object):
                 ba_tmp = 0
 
                 def optimize_(text_out, audio_out, visual_out, y, mem, optimizer, model, local_model, loss_tmp, nce_tmp, ba_tmp, stage):
+                    # optimizer function for a mini-batch
+
                     lld, nce, preds, pn_dic, H = model(text_out, visual_out, audio_out, y, mem)
 
 
@@ -424,6 +432,8 @@ class Solver(object):
             return epoch_loss / self.hp.n_train, lrs, local_epochs
 
         def evaluate(model, text_enc, acoustic_enc, visual_enc, criterion, test=False):
+            # Get training and test accuracy
+
             model.eval()
             text_enc.eval()
             acoustic_enc.eval()

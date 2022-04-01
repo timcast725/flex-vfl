@@ -258,7 +258,7 @@ def main_worker(index, args):
         optimizers.append(optimizer)
 
     best_acc1 = 0
-    start_epoch = 0
+    args.start_epoch = 0
     train_loss = []
     train_acc1 = []
     train_acc5 = []
@@ -289,13 +289,14 @@ def main_worker(index, args):
             test_acc1 = pickle.load(open(os.path.join(args.save_folder,'test_acc1.pkl'), 'rb'))
             test_acc5 = pickle.load(open(os.path.join(args.save_folder,'test_acc5.pkl'), 'rb'))
 
-    if start_epoch == 0:
+    if args.start_epoch == 0:
         loss, acc1, acc5 = validate(val_loader, models, criterion, args)
         test_loss.append(loss)
         test_acc1.append(acc1)
         test_acc5.append(acc5)
 
 
+    # Main training loop
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_loader.sampler.set_epoch(epoch)
@@ -369,6 +370,7 @@ def main_worker(index, args):
                 #if epoch == args.start_epoch:
                 #    sanity_check(model.state_dict(), args.pretrained)
 
+# VFL cropping functions for transformations
 def VFL_crop1(image):
     return image.crop((
                 0,
@@ -485,6 +487,8 @@ def create_data_loaders(args):
     return train_loader, val_loader, train_dataset.classes 
 
 def train_vafl(train_loader, models, criterion, optimizers, epoch, args, embeddings):
+    # Train asynchronous VFL
+
     batch_time = utils.AverageMeter('Time', '6.3f')
     data_time = utils.AverageMeter('Data', '6.3f')
     losses = utils.AverageMeter('Loss', '.4e')
@@ -563,6 +567,8 @@ def train_vafl(train_loader, models, criterion, optimizers, epoch, args, embeddi
 
 
 def train(train_loader, models, criterion, optimizers, epoch, args):
+    # Train synchronous and flexible VFL
+
     batch_time = utils.AverageMeter('Time', '6.3f')
     data_time = utils.AverageMeter('Data', '6.3f')
     losses = utils.AverageMeter('Loss', '.4e')
@@ -599,6 +605,8 @@ def train(train_loader, models, criterion, optimizers, epoch, args):
             with torch.no_grad():
                 embeddings.append(models[client](image_local))
 
+        # Number of local iterations chosen for each party
+        # based on the algorithm of choice
         local_epochs = []
         if args.mode == 'sync1': 
             local_epochs.append(2)
@@ -674,6 +682,8 @@ def train(train_loader, models, criterion, optimizers, epoch, args):
 
 
 def validate(val_loader, models, criterion, args):
+    # Get accuracy of models on data in val_loader
+
     batch_time = utils.AverageMeter('Time', '6.3f')
     losses = utils.AverageMeter('Loss', '.4e')
     top1 = utils.AverageMeter('Acc1', '6.2f')
@@ -726,30 +736,6 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, os.path.join(os.path.split(filename)[0], 'model_best.pth.tar'))
-
-
-#def sanity_check(state_dict, pretrained_weights):
-#    r"""
-#    Linear classifier should not change any weights other than the linear layer.
-#    This sanity check asserts nothing wrong happens (e.g., BN stats updated).
-#    """
-#    print("=> loading '{}' for sanity check".format(pretrained_weights))
-#    checkpoint = torch.load(pretrained_weights, map_location="cpu")
-#    state_dict_pre = checkpoint['state_dict']
-#
-#    for k in list(state_dict.keys()):
-#        # only ignore fc layer
-#        if 'fc.weight' in k or 'fc.bias' in k:
-#            continue
-#
-#        # name in pretrained model
-#        k_pre = 'module.encoder_q.' + k[len('module.'):] \
-#            if k.startswith('module.') else 'module.encoder_q.' + k
-#
-#        assert ((state_dict[k].cpu() == state_dict_pre[k_pre]).all()), \
-#            '{} is changed in linear classifier training.'.format(k)
-#
-#    print("=> sanity check passed.")
 
 
 def adjust_learning_rate(optimizer, epoch, lr):
