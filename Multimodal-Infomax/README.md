@@ -1,20 +1,8 @@
 # Flexible Vertical Federated Learning
 
-## Flex-VFL with CMU-MOSEI dataset
+This directory is an extension of the Momentum Contrast (MoCo) with Alignment and Uniformity Losses for C-VFL: [github.com/SsnL/moco_align_uniform](https://github.com/SsnL/moco_align_uniform).
 
-This directory is an extension of the Momentum Contrast (MoCo) with Alignment and Uniformity Losses for C-VFL: [github.com/SsnL/moco_align_uniform](https://github.com/SsnL/moco_align_uniform). Please cite the following paper if you use this work in your research:
-
-Extension of Multimodal-Infomax repository for Flex-VFL
-
-Requires MOSEI dataset to be in a folder named 'datasets'.
-
-To run all experiments sequentially:
-    python run_sbatch.py
-
-To plot existing results:
-    python plot_time.py 
-    python plot_adapt.py 
-
+## Running Flex-VFL with CMU-MOSEI dataset
 
 ### Dataset
 
@@ -26,6 +14,19 @@ Set up the environment (need conda prerequisite)
 ```
 conda env create -f environment.yml
 conda activate MMIM
+```
+
+### Running Flex-VFL
+
+To run all experiments sequentially:
+```.bash
+python run_sbatch.py
+```
+
+To plot existing results:
+```.bash
+python plot_time.py 
+python plot_adapt.py 
 ```
 
 ### Citation
