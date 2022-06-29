@@ -1,6 +1,6 @@
 # Flexible Vertical Federated Learning
 
-This directory is an extension of the Momentum Contrast (MoCo) with Alignment and Uniformity Losses for C-VFL: [github.com/SsnL/moco_align_uniform](https://github.com/SsnL/moco_align_uniform).
+This directory builds off of the Multimodal-Infomax dataset to simulate a vertical federated learning setting, and run Flex-VFL: [github.com/declare-lab/Multimodal-Infomax](https://github.com/declare-lab/Multimodal-Infomax).
 
 ## Running Flex-VFL with CMU-MOSEI dataset
 
