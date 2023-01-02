@@ -6,7 +6,7 @@ This directory builds off of the Momentum Contrast (MoCo) with Alignment and Uni
 
 ### Datasets
 
-The ModelNet40 dataset can be downloaded from [Google Drive](https://drive.google.com/file/d/0B4v2jR3WsindMUE3N2xiLVpyLW8/view).
+The ModelNet40 dataset can be downloaded from [Google Drive](https://drive.google.com/file/d/1YaGWesl9DyYNoE8Pfe80EmqHkoJ0XlKU/view?usp=sharing).
 The dataset must be placed in a folder named 'view' in the this directory. 
 
 The ImageNet dataset can be downloaded from [image-net.org](https://image-net.org/challenges/LSVRC/2012/2012-downloads.php).
