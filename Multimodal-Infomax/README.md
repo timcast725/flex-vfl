@@ -1,6 +1,6 @@
 # Flexible Vertical Federated Learning
 
-This directory builds off of the Multimodal-Infomax dataset to simulate a vertical federated learning setting, and run Flex-VFL: [github.com/declare-lab/Multimodal-Infomax](https://github.com/declare-lab/Multimodal-Infomax).
+This directory builds off of the [Multimodal-Infomax repo](https://github.com/declare-lab/Multimodal-Infomax) to simulate a vertical federated learning setting and run Flex-VFL.
 
 ## Running Flex-VFL with CMU-MOSEI dataset
 
