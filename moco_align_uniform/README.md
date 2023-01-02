@@ -1,6 +1,6 @@
 # Flexible Vertical Federated Learning
 
-This directory builds off of the Momentum Contrast (MoCo) with Alignment and Uniformity Losses to simulate a vertical federated learning setting, and run Flex-VFL: [github.com/SsnL/moco_align_uniform](https://github.com/SsnL/moco_align_uniform).
+This directory builds off of the [Momentum Contrast (MoCo) with Alignment and Uniformity Losses repo](https://github.com/SsnL/moco_align_uniform) to simulate a vertical federated learning setting and run Flex-VFL.
 
 ## Running Flex-VFL with the ModelNet40 dataset and ImageNet dataset
 
